@@ -21,7 +21,8 @@ To help you navigate the codebase, here are the key components:
 I need your help to make PAIOS available to everyone!
 1.  **Navigate** to `assets/translations/`.
 2.  **Create** a new file for your language code (e.g., `es.json` for Spanish), copying the structure from `en.json`.
-    -   **Important**: The app determines the system language by splitting the locale code by `_` and using only the first part (e.g., `en_US` becomes `en`). Therefore, file names and IDs **MUST** use only the two-letter language code (e.g., `es`, `zh`, `fr`). Regional codes like `zh_tw` or `en_gb` will **NOT** be matched automatically.
+    -   **Important**: The app determines the system language by first checking for an exact match (e.g., `zh_TW`). If not found, it falls back to the two-letter language code (e.g., `en_US` becomes `en`).
+    -   Therefore, prefer using the two-letter language code (e.g., `es`, `fr`) to reach the widest audience. Use regional codes (e.g., `zh_TW`, `pt_BR`) only when significant differences require separate translations.
     -   You are also technically "welcome" to submit a Russian translation (`ru`). Please do so if you want to give me the satisfaction of declining your PR immediately.
 3.  **Translate** the values (leave keys unchanged).
 4.  **Register** your new language in `assets/translations/languages.json`. Example:
