@@ -42,6 +42,6 @@ flutter:
     - assets/translations/languages.json
     - assets/translations/uk.json
     - assets/translations/en.json
-    - assets/translations/zh.json
+    - assets/translations/zh_TW.json
     - assets/system_prompt.txt
     - assets/additional_resources.json

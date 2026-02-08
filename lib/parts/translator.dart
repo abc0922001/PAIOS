@@ -27,10 +27,22 @@ class Dictionary {
     }
   }
   setSystemLanguage() async {
-    String deviceLocale = Platform.localeName.split("_")[0];
-    for(int a = 0; a < languages.length;a++){
-      if(languages[a]["id"] == deviceLocale){
+    String deviceLocale = Platform.localeName.replaceAll("-", "_");
+    String languageCode = deviceLocale.split("_")[0];
+
+    // Try full match first (e.g., zh_TW)
+    for (int a = 0; a < languages.length; a++) {
+      if (languages[a]["id"] == deviceLocale) {
         locale = deviceLocale;
+        return;
+      }
+    }
+
+    // Try language code match (e.g., zh)
+    for (int a = 0; a < languages.length; a++) {
+      if (languages[a]["id"] == languageCode) {
+        locale = languageCode;
+        return;
       }
     }
   }
