@@ -13,6 +13,18 @@
     - Per-chat personas, temperature and token limit settings, etc. 
  - [ ] **Generation extension**
     - Workaround for 25s response generation time that ends answers prematurely
+ - [ ] **AICore controls**
+    - Ability to select test Nano versions and update track, maybe remove 25s limit entirely
+ - [ ] **Documentation in-app**
+    - Viewer for Google documentation on AICore with article browser
+ - [ ] **Contributions and open-source licenses**
+    - Show some respect to developers who made this possible
+ - [ ] **Change in storage and updates**
+    - Use Firebase Remote Config for delivering data updates and storage instead of GitHub, move to a real DB instead of shared prefs
+ - [ ] **GitHub issue and update browser**
+    - A neat dashboard of contributions and issue list from this repo, in-app
+ - [ ] **Master Prompt selector**
+    - Collection of different Master Prompts and ability to create own ones
  - [ ] **Master Prompt fixes**
     - Finalizing the master prompt so it delivers more consistency
  - [ ] **Monetization**
