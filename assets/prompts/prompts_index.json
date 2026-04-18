@@ -1,0 +1,16 @@
+{
+  "system_default": {
+    "id": "system_default",
+    "name": "System Default",
+    "description": "The default PAIOS instructions.",
+    "author": "Google / Puzzak",
+    "updated": "1713500000000"
+  },
+  "pirate": {
+    "id": "pirate",
+    "name": "Pirate Persona",
+    "description": "Answers everything like a pirate.",
+    "author": "Puzzak",
+    "updated": "1713500000000"
+  }
+}

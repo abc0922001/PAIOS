@@ -175,7 +175,7 @@ class ChatSettingsPageState extends State<ChatSettingsPage> {
                                       }else{
                                         composeConversation = jsonDecode(engine.chats[engine.currentChat]?["history"])[0]["message"];
                                       }
-                                      await engine.generateTitle(composeConversation).then((output){
+                                      await engine.generateChatTitle(composeConversation).then((output){
                                         newTitle = output;
                                       });
                                       setState(() {
@@ -191,6 +191,57 @@ class ChatSettingsPageState extends State<ChatSettingsPage> {
                                     subsubtitle: "",
                                     progress: 0
                                 )
+                            ]),
+                            Category.settings(
+                                title: engine.dict.value("chat_prompt"),
+                                context: context
+                            ),
+                            cards.cardGroup([
+                              CardContents.tap(
+                                title: engine.dict.value("chat_prompt"),
+                                subtitle: engine.promptData.getPromptName(engine.chats[engine.currentChat]?["promptId"] ?? engine.config.defaultPromptId),
+                                action: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext dialogContext) => AlertDialog(
+                                      title: Text(engine.dict.value("select_prompt")),
+                                      content: Container(
+                                        constraints: BoxConstraints(maxHeight: 300),
+                                        child: SingleChildScrollView(
+                                          child: cards.cardGroup([
+                                            ...engine.promptData.defaultPrompts.keys.map((key) {
+                                              return CardContents.halfTap(
+                                                title: engine.promptData.defaultPrompts[key]["name"] ?? "Default",
+                                                subtitle: "System",
+                                                action: () {
+                                                  setState(() {
+                                                    engine.chats[engine.currentChat]!["promptId"] = key;
+                                                  });
+                                                  engine.saveChats();
+                                                  Navigator.pop(dialogContext);
+                                                }
+                                              );
+                                            }).toList().cast<Widget>(),
+                                            ...engine.promptData.userPrompts.keys.map((key) {
+                                              return CardContents.halfTap(
+                                                title: engine.promptData.userPrompts[key]["name"] ?? "Custom",
+                                                subtitle: "User",
+                                                action: () {
+                                                  setState(() {
+                                                    engine.chats[engine.currentChat]!["promptId"] = key;
+                                                  });
+                                                  engine.saveChats();
+                                                  Navigator.pop(dialogContext);
+                                                }
+                                              );
+                                            }).toList().cast<Widget>(),
+                                          ])
+                                        )
+                                      )
+                                    )
+                                  );
+                                }
+                              )
                             ]),
                             Category.settings(
                                 title: engine.dict.value("chat_settings_other"),

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:geminilocal/pages/settings/logs.dart';
-import 'package:geminilocal/pages/settings/model.dart';
+import 'package:geminilocal/pages/settings/prompts.dart';
 import 'package:geminilocal/pages/settings/resources.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../engine.dart';
 import 'support/elements.dart';
 import 'package:intl/intl.dart';
+import 'package:geminilocal/pages/settings/model.dart';
 
 
 class SettingsPage extends StatefulWidget {
@@ -142,6 +143,65 @@ class SettingsPageState extends State<SettingsPage> {
                                           settings: const RouteSettings(name: 'ModelSettings')),
                                     );
                                   }
+                              ),
+                              CardContents.tapIcon(
+                                  title: engine.dict.value("prompt_manager_title"),
+                                  subtitle: engine.dict.value("system_prompt_desc"),
+                                  icon: Icons.edit_note_rounded,
+                                  colorBG: Theme.of(context).colorScheme.tertiaryFixedDim,
+                                  color: Theme.of(context).colorScheme.onTertiaryFixed,
+                                  action: () async {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => PromptsPage(),
+                                          settings: const RouteSettings(name: 'PromptsPage')),
+                                    );
+                                  }
+                              ),
+                              CardContents.tap(
+                                title: engine.dict.value("default_prompt_picker"),
+                                subtitle: engine.promptData.getPromptName(engine.config.defaultPromptId),
+                                action: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext dialogContext) => AlertDialog(
+                                      title: Text(engine.dict.value("select_prompt")),
+                                      content: Container(
+                                        constraints: BoxConstraints(maxHeight: 300),
+                                        child: SingleChildScrollView(
+                                          child: cards.cardGroup([
+                                            ...engine.promptData.defaultPrompts.keys.map((key) {
+                                              return CardContents.halfTap(
+                                                title: engine.promptData.defaultPrompts[key]["name"] ?? "Default",
+                                                subtitle: "System",
+                                                action: () {
+                                                  setState(() {
+                                                    engine.config.defaultPromptId = key;
+                                                  });
+                                                  engine.saveSettings();
+                                                  Navigator.pop(dialogContext);
+                                                }
+                                              );
+                                            }).toList().cast<Widget>(),
+                                            ...engine.promptData.userPrompts.keys.map((key) {
+                                              return CardContents.halfTap(
+                                                title: engine.promptData.userPrompts[key]["name"] ?? "Custom",
+                                                subtitle: "User",
+                                                action: () {
+                                                  setState(() {
+                                                    engine.config.defaultPromptId = key;
+                                                  });
+                                                  engine.saveSettings();
+                                                  Navigator.pop(dialogContext);
+                                                }
+                                              );
+                                            }).toList().cast<Widget>(),
+                                          ])
+                                        )
+                                      )
+                                    )
+                                  );
+                                }
                               )
                             ]),
                             Category.settings(

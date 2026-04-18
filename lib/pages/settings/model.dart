@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:geminilocal/pages/settings/context.dart';
 import 'package:provider/provider.dart';
 import '../../engine.dart';
 import '../support/elements.dart';
@@ -45,48 +44,7 @@ class ModelSettingsState extends State<ModelSettings> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Category.settings(
-                                title: engine.dict.value("system_prompt"),
-                                context: context
-                            ),
-                            cards.cardGroup([
-                              CardContents.turn(
-                                  title: engine.dict.value("ignore_instructions"),
-                                  subtitle: engine.dict.value("ignore_instructions_desc"),
-                                  action: (){
-                                    setState(() {
-                                      engine.ignoreInstructions = !engine.ignoreInstructions;
-                                    });
-                                    engine.saveSettings();
-                                  },
-                                  switcher: (value){
-                                    setState(() {
-                                      engine.ignoreInstructions = !engine.ignoreInstructions;
-                                    });
-                                    engine.saveSettings();
-                                  },
-                                  value: engine.ignoreInstructions
-                              ),
-                              CardContents.tap(
-                                  title: engine.dict.value("system_prompt"),
-                                  subtitle: engine.dict.value("system_prompt_desc"),
-                                  action: () async {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => ModelSettingsContext(),
-                                          settings: const RouteSettings(name: 'SettingsPage')),
-                                    );
-                                    engine.testPrompt = await engine.promptEngine.generate(
-                                        "replaceme",
-                                        engine.context,
-                                        engine.modelInfo,
-                                      shareLocale: engine.shareLocale,
-                                      addTime: engine.addCurrentTimeToRequests,
-                                      currentLocale: engine.dict.value("current_language")
-                                    );
-                                  }
-                              )
-                            ]),
+
                             Category.settings(
                                 title: engine.dict.value("settings_ai"),
                                 context: context

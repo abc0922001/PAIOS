@@ -2,18 +2,19 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as md;
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geminilocal/pages/support/elements.dart';
 import 'package:geminilocal/parts/prompt.dart';
 import 'package:geminilocal/parts/translator.dart';
-import 'firebase_options.dart';
 import 'parts/gemini.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geminilocal/storage/analytics_service.dart';
+import 'package:geminilocal/storage/app_config.dart';
+import 'package:geminilocal/storage/chat_repository.dart';
+import 'package:geminilocal/storage/migration.dart';
+import 'package:geminilocal/storage/prompt_repository.dart';
 
 class AIEngine with md.ChangeNotifier {
   final gemini = GeminiNano();
@@ -23,9 +24,9 @@ class AIEngine with md.ChangeNotifier {
 
   Dictionary dict = Dictionary(
     path: "assets/translations",
-    url: "https://raw.githubusercontent.com/Puzzaks/PAIOS/main",
+    url: "https://raw.githubusercontent.com/Puzzak/PAIOS-Dict/main",
   );
-  Prompt promptEngine = Prompt(ghUrl: "https://github.com/Puzzaks/PAIOS");
+  Prompt promptEngine = Prompt(ghUrl: "https://github.com/Puzzak/PAIOS");
   AiResponse response = AiResponse(
     text: "Loading...",
     tokenCount: 1,
@@ -40,33 +41,66 @@ class AIEngine with md.ChangeNotifier {
   bool isInitializing = false;
   String status = "";
   bool isError = false;
-  bool firstLaunch = true;
-  String lastPrompt = "";
-  md.ScrollController scroller = md.ScrollController();
 
-  // Config
-  int tokens = 256; // Increased default
-  double temperature = 0.7;
-  int usualModelSize = 3854827928;
-  Map modelInfo = {};
-  List context = [];
-  int contextSize = 0;
-  bool addCurrentTimeToRequests = false;
-  bool shareLocale = false;
-  bool errorRetry = true;
   bool appStarted = false;
   String testPrompt = "";
+  Map modelInfo = {};
   Map resources = {};
   List modelDownloadLog = [];
-  bool ignoreInstructions = false;
   bool ignoreContext = false;
 
-  Map chats = {};
-  String currentChat = "0";
+  md.ScrollController scroller = md.ScrollController();
 
-  bool analytics = true;
-  bool analyticsDone = false;
-  List<Map> logs = [];
+  late final AppConfig config;
+  late final ChatRepository chatData;
+  late final AnalyticsService logger;
+  late final PromptRepository promptData;
+
+  AIEngine() {
+    config = AppConfig(notifyEngine: genericRefresh);
+    logger = AnalyticsService(notifyEngine: genericRefresh);
+    promptData = PromptRepository(notifyEngine: genericRefresh);
+    chatData = ChatRepository(
+      notifyEngine: genericRefresh,
+      requestTitle: generateChatTitle,
+      logEvent: logger.log,
+      getDefaultPromptId: () => config.defaultPromptId,
+    );
+  }
+
+  // Getters/Setters to maintain UI compatibility
+  bool get firstLaunch => config.firstLaunch;
+  int get tokens => config.tokens;
+  set tokens(int value) => config.tokens = value;
+  double get temperature => config.temperature;
+  set temperature(double value) => config.temperature = value;
+  int get usualModelSize => config.usualModelSize;
+  bool get addCurrentTimeToRequests => config.addCurrentTimeToRequests;
+  set addCurrentTimeToRequests(bool value) => config.addCurrentTimeToRequests = value;
+  bool get shareLocale => config.shareLocale;
+  set shareLocale(bool value) => config.shareLocale = value;
+  bool get errorRetry => config.errorRetry;
+  set errorRetry(bool value) => config.errorRetry = value;
+  bool get ignoreInstructions => config.ignoreInstructions;
+  set ignoreInstructions(bool value) => config.ignoreInstructions = value;
+
+  Map get chats => chatData.chats;
+  String get currentChat => chatData.currentChat;
+  set currentChat(String value) => chatData.currentChat = value;
+  List get context => chatData.context;
+  set context(List value) => chatData.context = value;
+  int get contextSize => chatData.contextSize;
+  set contextSize(int value) => chatData.contextSize = value;
+  String get lastPrompt => chatData.lastPrompt;
+  set lastPrompt(String value) => chatData.lastPrompt = value;
+
+  bool get analytics => logger.analyticsEnabled;
+  set analytics(bool value) => logger.analyticsEnabled = value;
+  bool get analyticsDone => logger.analyticsDone;
+  List<Map> get logs => logger.logs;
+  bool get isLoadingTitle => chatData.isLoadingTitle;
+  
+  List<Map<String, dynamic>> get logsList => logs.cast<Map<String, dynamic>>();
 
   /// Subscription to manage the active AI stream
   StreamSubscription<AiEvent>? _aiSubscription;
@@ -78,23 +112,8 @@ class AIEngine with md.ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> endFirstLaunch() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setBool("firstLaunch", false);
-    firstLaunch = false;
-    notifyListeners();
-  }
-
-  saveSettings() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setDouble("temperature", temperature);
-    prefs.setInt("tokens", tokens);
-    prefs.setString("instructions", instructions.text);
-    prefs.setBool("addCurrentTimeToRequests", addCurrentTimeToRequests);
-    prefs.setBool("shareLocale", shareLocale);
-    prefs.setBool("errorRetry", errorRetry);
-    prefs.setBool("ignoreInstructions", ignoreInstructions);
-  }
+  Future<void> endFirstLaunch() => config.endFirstLaunch();
+  Future<void> saveSettings() => config.saveSettings(instructions.text);
 
   scrollChatlog(Duration speed) {
     scroller.animateTo(
@@ -104,143 +123,56 @@ class AIEngine with md.ChangeNotifier {
     );
   }
 
-  Future<void> startAnalytics() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setBool("analytics", true);
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
-    await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
-    await FirebaseAnalytics.instance.setConsent();
-    await Firebase.app().setAutomaticDataCollectionEnabled(true);
-    await Firebase.app().setAutomaticResourceManagementEnabled(true);
-    analyticsDone = true;
-    await log("application", "info", "Enabling analytics");
-  }
-
-  Future<void> stopAnalytics() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setBool("analytics", false);
-    await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(false);
-    await Firebase.app().setAutomaticDataCollectionEnabled(false);
-    await Firebase.app().setAutomaticResourceManagementEnabled(false);
-    await log("application", "info", "Disabling analytics");
-  }
-
-  Future<void> log(String name, String type, String message) async {
-    if (logs.isEmpty) {
-      logs.add({
-        "thread": name,
-        "time": DateTime.now().millisecondsSinceEpoch,
-        "type": type,
-        "message": message,
-      });
-    } else {
-      if (logs.last["thread"] == name &&
-          logs.last["type"] == type &&
-          logs.last["message"] == message) {
-        logs.last["time"] = DateTime.now().millisecondsSinceEpoch;
-        if (kDebugMode) {
-          print("Still alive, did the last thing said above");
-        }
-      } else {
-        logs.add({
-          "thread": name,
-          "time": DateTime.now().millisecondsSinceEpoch,
-          "type": type,
-          "message": message,
-        });
-        if (kDebugMode) {
-          print("${type}_$name: $message");
-        }
-      }
-    }
-    notifyListeners();
-    if (analytics && analyticsDone) {
-      try {
-        await FirebaseAnalytics.instance.logEvent(
-          name: name,
-          parameters: <String, Object>{'type': type, 'message': message},
-        );
-      } catch (e) {
-        if (kDebugMode) {
-          print("Analytics failed. Not waiting anymore. Error: $e");
-        }
-      }
-    }
-  }
+  Future<void> startAnalytics() => logger.startAnalytics();
+  Future<void> stopAnalytics() => logger.stopAnalytics();
+  Future<void> log(String name, String type, String message) => logger.log(name, type, message);
 
   Future<void> start() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    if (prefs.containsKey("analytics")) {
-      analytics = prefs.getBool("analytics") ?? true;
-      if (analytics) {
-        startAnalytics();
-      }
-    } else {
-      startAnalytics();
-    }
-    log("init", "info", "Starting the app engine");
-    log("init", "info", "Starting the translations engine");
+    await MigrationService.initiateMigration();
+    await logger.initFromHive();
+    await config.initFromHive();
+    
+    await log("init", "info", "Starting the app engine");
+    await log("init", "info", "Starting the translations engine");
+    dict = Dictionary(path: "assets/translations", url: "https://raw.githubusercontent.com/${config.repo}/main");
     await dict.setup();
-    log("init", "info", "Checking Gemini Nano status");
+    await log("init", "info", "Checking Gemini Nano status");
     await checkEngine();
-    log("init", "info", "Initializing the Prompt engine");
+    await log("init", "info", "Initializing the Prompt engine");
+    promptEngine = Prompt(ghUrl: "https://github.com/${config.repo}");
+    await promptData.initFromHive("https://raw.githubusercontent.com/${config.repo}/main");
     await promptEngine.initialize();
-    log(
+    
+    await log(
       "init",
       "info",
       "Firebase analytics: ${analytics ? "Enabled" : "Disabled"}",
     );
-    if (prefs.containsKey("context")) {
-      context = jsonDecode(prefs.getString("context") ?? "[]");
-      contextSize = prefs.getInt("contextSize") ?? 0;
-    }
-    if (prefs.containsKey("chats")) {
-      chats = jsonDecode(prefs.getString("chats") ?? "[]");
-    }
-    log(
-      "init",
-      "info",
-      chats.isEmpty ? "No chats found" : "Found chats: ${chats.length}",
-    );
-    addCurrentTimeToRequests =
-        prefs.getBool("addCurrentTimeToRequests") ?? false;
-    log(
+
+    await chatData.initFromHive();
+    await log(
       "init",
       "info",
       "Add DateTime to prompt: ${addCurrentTimeToRequests ? "Enabled" : "Disabled"}",
     );
-    shareLocale = prefs.getBool("shareLocale") ?? false;
-    log(
+    await log(
       "init",
       "info",
       "Add app locale to prompt: ${shareLocale ? "Enabled" : "Disabled"}",
     );
-    errorRetry = prefs.getBool("errorRetry") ?? true;
-    log(
+    await log(
       "init",
       "info",
       "Retry on error: ${errorRetry ? "Enabled" : "Disabled"}",
     );
-    ignoreInstructions = prefs.getBool("ignoreInstructions") ?? false;
-    log(
+    await log(
       "init",
       "info",
       "Ignore instructions: ${ignoreInstructions ? "Enabled" : "Disabled"}",
     );
-    instructions.text = prefs.getString("instructions") ?? "";
-    temperature = prefs.getDouble("temperature") ?? 0.7;
-    tokens = prefs.getInt("tokens") ?? 256;
     appStarted = true;
-    log("init", "info", "App initiation complete");
+    await log("init", "info", "App initiation complete");
     notifyListeners();
-    // await Future.delayed(Duration(milliseconds: 250));
-    // scrollChatlog(Duration(seconds: 3));
-    // await Future.delayed(Duration(seconds: 3));
-    // scrollChatlog(Duration(milliseconds: 250));
-    // log("init", "info", "Crashing now!");
-    // FirebaseCrashlytics.instance.crash();
-    // log("init", "info", "Crashed!");
-
   }
 
   void addDownloadLog(String log) {
@@ -281,32 +213,34 @@ class AIEngine with md.ChangeNotifier {
       await Future.delayed(Duration(seconds: 2));
     }
   }
+
   String convertSize(int size, bool isSpeed) {
     if (size < 1024) {
-      return '$size B${isSpeed?"/s":""}';
+      return '$size B${isSpeed ? "/s" : ""}';
     } else if (size < 10240) {
       double sizeKb = size / 1024;
-      return '${sizeKb.toStringAsFixed(2)} KB${isSpeed?"/s":""}';
+      return '${sizeKb.toStringAsFixed(2)} KB${isSpeed ? "/s" : ""}';
     } else if (size < 1048576) {
       double sizeKb = size / 1024;
-      return '${sizeKb.toStringAsFixed(1)} KB${isSpeed?"/s":""}';
+      return '${sizeKb.toStringAsFixed(1)} KB${isSpeed ? "/s" : ""}';
     } else if (size < 10485760) {
       double sizeMb = size / 1048576;
-      return '${sizeMb.toStringAsFixed(2)} MB${isSpeed?"/s":""}';
+      return '${sizeMb.toStringAsFixed(2)} MB${isSpeed ? "/s" : ""}';
     } else if (size < 104857600) {
       double sizeMb = size / 1048576;
-      return '${sizeMb.toStringAsFixed(1)} MB${isSpeed?"/s":""}';
+      return '${sizeMb.toStringAsFixed(1)} MB${isSpeed ? "/s" : ""}';
     } else if (size < 1073741824) {
       double sizeGb = size / 1073741824;
-      return '${sizeGb.toStringAsFixed(2)} GB${isSpeed?"/s":""}';
+      return '${sizeGb.toStringAsFixed(2)} GB${isSpeed ? "/s" : ""}';
     } else if (size < 10737418240) {
       double sizeGb = size / 1073741824;
-      return '${sizeGb.toStringAsFixed(1)} GB${isSpeed?"/s":""}';
+      return '${sizeGb.toStringAsFixed(1)} GB${isSpeed ? "/s" : ""}';
     } else {
       double sizeGb = size / 1073741824;
-      return '${sizeGb.toInt()} GB${isSpeed?"/s":""}';
+      return '${sizeGb.toInt()} GB${isSpeed ? "/s" : ""}';
     }
   }
+
   lateProgressCheck() async {
     Map lastUpdate = {};
     while (firstLaunch) {
@@ -454,10 +388,75 @@ class AIEngine with md.ChangeNotifier {
     }
   }
 
-  Future generateTitle(String input) async {
+  Future<String> generateChatTitle(String input) async {
     ignoreContext = true;
+    String newTitle = "";
     await log("model", "info", "Generating new chat title");
-    String newTitle = "Getting description";
+    await generateTitle("Task: Create a short, 3-5 word title for this conversation.\n"
+        "Rules:\n"
+        "1. DO NOT use full sentences.\n"
+        "2. DO NOT use phrases like \"The conversation is about\" or \"Summary of\".\n"
+        "3. Be extremely concise.\n"
+        "4. The title MUST be in the same language as the conversation.\n"
+        "5. The title MUST be about whole conversation if there is more than one message.\n"
+        "6. The title MUST NOT contain ANY name of any conversation party like \"Gemini\", \"Gemini's\", \"User\" or \"User's\".\n"
+        "Examples:\n"
+        "Conversation: \"Hello, how are you?\"\n"
+        "Title: Greeting\n\n"
+        "Conversation: \"Привіт, як справи?\"\n"
+        "Title: Привітання\n\n"
+        "Conversation: \"Write a python script to sort a list\"\n"
+        "Title: Python sorting script\n\n"
+        "Conversation: \"Why is the sky blue?\"\n"
+        "Title: Sky color explanation\n\n"
+        "Conversation: \"I need help with my printer\"\n"
+        "Title: Printer troubleshooting\n\n"
+        "Conversation: \"sdlkfjsdf\"\n"
+        "Title: Random characters\n\n"
+        "Conversation: \n\"$input\"\n"
+        "Title: ")
+        .then((title) {
+      newTitle = title;
+    });
+    return newTitle;
+  }
+
+  Future<String> generatePromptTitle(String input) async {
+    ignoreContext = true;
+    String newTitle = "";
+    await log("model", "info", "Generating new prompt title");
+    await generateTitle("Task: Create a short, 3-5 word title for this prompt.\n"
+        "Rules:\n"
+        "1. DO NOT use full sentences.\n"
+        "2. DO NOT use phrases like \"The prompt is about\" or \"Summary of\".\n"
+        "3. Be extremely concise.\n"
+        "4. The title MUST be in the same language as the prompt.\n"
+        "5. The title MUST be about whole prompt.\n"
+        "6. The title MUST NOT contain ANY name of any party like \"Gemini\", \"Gemini's\", \"User\" or \"User's\".\n"
+        "7. The title must not be a word-for-word representation for small prompts.\n"
+        "8. If the prompt is empty, title it like \"Empty prompt\" or \"No prompt\" or in similar way.\n"
+        "Examples:\n"
+        "Prompt: \"Speak only in pirate language, do not break character\"\n"
+        "Title: Pirate speak\n\n"
+        "Prompt: \"Розмовляй як науковець\"\n"
+        "Title: Науковець\n\n"
+        "Prompt: \"Be a coding assistant, do not try to do anything but fix, optimize or refactor the code\"\n"
+        "Title: Coding assistant\n\n"
+        "Prompt: \"sdlkfjsdf\"\n"
+        "Title: Bad prompt (gibberish)\n\n"
+        "Prompt: \"\"\n"
+        "Title: Empty prompt\n\n"
+        "Prompt: \n\"$input\"\n"
+        "Title: ")
+        .then((title) {
+      newTitle = title;
+    });
+    return newTitle;
+  }
+
+  Future<String> generateTitle(String input) async {
+    ignoreContext = true;
+    String newTitle = "";
     await gemini.init().then((initStatus) async {
       ignoreContext = false;
       if (initStatus == null) {
@@ -471,39 +470,16 @@ class AIEngine with md.ChangeNotifier {
         } else {
           await gemini
               .generateText(
-                prompt:
-                    "Task: Create a short, 3-5 word title for this conversation.\n"
-                    "Rules:\n"
-                    "1. DO NOT use full sentences.\n"
-                    "2. DO NOT use phrases like \"The conversation is about\" or \"Summary of\".\n"
-                    "3. Be extremely concise.\n"
-                    "4. The title MUST be in the same language as the conversation.\n"
-                    "5. The title MUST be about whole conversation if there is more than one message.\n"
-                    "6. The title MUST NOT contain ANY name of any conversation party like \"Gemini\", \"Gemini's\", \"User\" or \"User's\".\n"
-                    "Examples:\n"
-                    "Conversation: \"Hello, how are you?\"\n"
-                    "Title: Greeting\n\n"
-                    "Conversation: \"Привіт, як справи?\"\n"
-                    "Title: Привітання\n\n"
-                    "Conversation: \"Write a python script to sort a list\"\n"
-                    "Title: Python sorting script\n\n"
-                    "Conversation: \"Why is the sky blue?\"\n"
-                    "Title: Sky color explanation\n\n"
-                    "Conversation: \"I need help with my printer\"\n"
-                    "Title: Printer troubleshooting\n\n"
-                    "Conversation: \"sdlkfjsdf\"\n"
-                    "Title: Random characters\n\n"
-                    "Conversation: \n\"$input\"\n"
-                    "Title: ",
-                config: GenerationConfig(maxTokens: 20, temperature: 0.7),
-              )
+            prompt: input,
+            config: GenerationConfig(maxTokens: 20, temperature: 0.7),
+          )
               .then((title) {
-                newTitle = title.split('\n').first;
-                newTitle = newTitle.replaceAll(RegExp(r'[*#_`]'), '').trim();
-                if (newTitle.length > 40) {
-                  newTitle = "${newTitle.substring(0, 40)}...";
-                }
-              });
+            newTitle = title.split('\n').first;
+            newTitle = newTitle.replaceAll(RegExp(r'[*#_`]'), '').trim();
+            if (newTitle.length > 40) {
+              newTitle = "${newTitle.substring(0, 40)}...";
+            }
+          });
         }
       }
     });
@@ -527,7 +503,7 @@ class AIEngine with md.ChangeNotifier {
           await Future.delayed(Duration(milliseconds: 500));
 
           /// We have to wait some time because summarizing immediately will always result in overflowing the quota for some reason
-          await generateTitle(conversation[0]["message"]).then((newTitle) {
+          await generateChatTitle(conversation[0]["message"]).then((newTitle) {
             chats[chatID]!["name"] = newTitle;
           });
         }
@@ -550,7 +526,7 @@ class AIEngine with md.ChangeNotifier {
         for (var line in conversation) {
           composeConversation = "$composeConversation\n - ${line["message"]}";
         }
-        await generateTitle(composeConversation).then((result) {
+        await generateChatTitle(composeConversation).then((result) {
           newTitle = result;
         });
 
@@ -570,17 +546,9 @@ class AIEngine with md.ChangeNotifier {
     genericRefresh();
   }
 
-  clearContext() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    context.clear();
-    contextSize = 0;
-    lastPrompt = "";
+  Future<void> clearContext() async {
+    await chatData.clearContext();
     responseText = "";
-    chats.remove(currentChat);
-    await prefs.setString("chats", jsonEncode(chats));
-    await prefs.setString("context", jsonEncode(context));
-    await prefs.setInt("contextSize", contextSize);
-    notifyListeners();
   }
 
   Future<void> initEngine() async {
@@ -589,9 +557,12 @@ class AIEngine with md.ChangeNotifier {
     isError = false;
     notifyListeners();
     try {
+      String currentPromptId = chatData.chats.containsKey(currentChat) ? chatData.chats[currentChat]["promptId"] ?? config.defaultPromptId : config.defaultPromptId;
+      String specificPromptText = promptData.getPromptContent(currentPromptId);
+      
       await promptEngine
           .generate(
-            instructions.text,
+            specificPromptText,
             context,
             modelInfo,
             currentLocale: dict.value("current_language"),
