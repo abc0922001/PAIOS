@@ -21,6 +21,7 @@
     - Show some respect to developers who made this possible
  - [ ] **Change in storage and updates** `~1.1.6`
     - Use Firebase Remote Config for delivering data updates and storage instead of GitHub, move to a real DB instead of shared prefs
+    - It would look like Remote Config would not work for collaboration (prompts and translations) so only the *config* part will move there
  - [ ] **GitHub issue and update browser**
     - A neat dashboard of contributions and issue list from this repo, in-app
  - [ ] **Master Prompt selector and editor** `~1.1.6`
