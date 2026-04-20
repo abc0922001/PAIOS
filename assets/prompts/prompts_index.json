@@ -1,7 +1,7 @@
 {
   "system_default": {
     "id": "system_default",
-    "name": "System Default",
+    "name": "Default",
     "description": "The default PAIOS instructions.",
     "author": "Puzzak",
     "updated": "1776724217000"
