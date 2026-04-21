@@ -149,5 +149,12 @@
   "model_continuing": "Continuing response…",
   "new_chat_hold": "Hold to configure before starting",
   "configure_new_chat": "Configure this chat",
-  "temperature_desc": "%value%, default is 0.7"
+  "temperature_desc": "%value%, default is 0.7",
+  "prompt_description": "Description",
+  "prompt_author": "Author",
+  "prompt_last_updated": "Last updated",
+  "prompt_empty": "This prompt is empty.",
+  "export_prompt": "Export as .md",
+  "prompt_dir_title": "Prompt file directory",
+  "prompt_dir_none": "Tap to choose a folder"
 }

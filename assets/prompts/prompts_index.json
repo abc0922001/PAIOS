@@ -1,16 +1,23 @@
+[
 {
-  "system_default": {
     "id": "system_default",
     "name": "Default",
-    "description": "The default PAIOS instructions.",
+    "description": "Simple PAIOS prompt.",
     "author": "Puzzak",
     "updated": "1776724217000"
   },
-  "pirate": {
+  {
     "id": "pirate",
     "name": "Pirate Persona",
     "description": "Answers everything like a pirate.",
     "author": "Puzzak",
     "updated": "1776724217000"
+  },
+  {
+    "id": "old",
+    "name": "Old prompt",
+    "description": "Pre 1.2.0 prompt, made for nano-v2. Barely works.",
+    "author": "Puzzak",
+    "updated": "1776724217000"
   }
-}
+]
