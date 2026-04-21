@@ -1,3 +1,16 @@
+## Update 1.1.7 `OBT`
+#### Changes
+- Auto-continue on long responses
+- Per-chat temperature
+- Reworked and optimized settings 
+#### Known Issue
+ - Chats may not save
+ - Prompts are not loaded from GitHub
+ - Chat from "Testing prompt" counts towards total chat counter
+ - Autocoplete is in testing and may not behave correcly:
+   - It may prompt model to continue when it's answer is finished (especially if the answer took exactly 25 seconds to complete)
+   - It may NOT prompt model to continue even if it was cut-off
+
 ## Update 1.1.6 `OBT`
 #### Changes
 - Prompt manager
