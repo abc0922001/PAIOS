@@ -1,3 +1,14 @@
+## Update 1.1.8 `OBT`
+#### Changes
+- Reworked and optimized settings and other parts
+- Updated prompt manager
+- Prompt exports in .md
+- Prompt imports in .md
+#### Fixes
+- Fixed issue with chats not being saved
+- Fixed issue with resource names not being translated
+- Fixed issue with prompts not being downloaded from GH
+
 ## Update 1.1.7 `OBT`
 #### Changes
 - Auto-continue on long responses
