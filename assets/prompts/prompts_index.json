@@ -1,5 +1,5 @@
 [
-{
+  {
     "id": "system_default",
     "name": "Default",
     "description": "Simple PAIOS prompt.",
@@ -14,7 +14,7 @@
     "updated": "1776724217000"
   },
   {
-    "id": "old",
+    "id": "system_old",
     "name": "Old prompt",
     "description": "Pre 1.2.0 prompt, made for nano-v2. Barely works.",
     "author": "Puzzak",
