@@ -14,7 +14,7 @@
     "updated": "1776724217000"
   },
   "old": {
-    "id": "old",
+    "id": "system_old",
     "name": "Old prompt",
     "description": "Pre 1.2.0 prompt, made for nano-v2. Barely works.",
     "author": "Puzzak",
