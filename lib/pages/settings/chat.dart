@@ -43,12 +43,11 @@ class ChatSettingsPageState extends State<ChatSettingsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (engine.currentChat != "0") Category.settings(
-                                title: engine.dict.value("chat_name"),
+                                title: engine.dict.value("chat_settings"),
                                 context: context
                             ),
                             if (engine.currentChat != "0") cards.cardGroup([
-                              if(!engine.isLoading)
-                                CardContents.doubleTap(
+                              if(!engine.isLoading) CardContents.doubleTap(
                                     title: engine.chats[engine.currentChat]?["name"]??engine.dict.value("new_chat"),
                                     subtitle: engine.dict.value("change_name"),
                                     action: (){
@@ -184,19 +183,100 @@ class ChatSettingsPageState extends State<ChatSettingsPage> {
                                       });
                                     }
                                 ),
-                              if(engine.isLoading)
-                                CardContents.progress(
+                              if(engine.isLoading) CardContents.progress(
                                     title: engine.dict.value("generating_title"),
                                     subtitle: "",
                                     subsubtitle: "",
                                     progress: 0
-                                )
+                                ),
+                              if (engine.currentChat != "0") CardContents.turn(
+                                  title: engine.dict.value("pin_chat"),
+                                  subtitle: engine.dict.value("pin_chat_desc"),
+                                  action: (){
+                                    setState(() {
+                                      engine.chats[engine.currentChat]?["pinned"] = !(engine.chats[engine.currentChat]?["pinned"]??false);
+                                    });
+                                    engine.saveChats();
+                                  },
+                                  switcher: (value){
+                                    setState(() {
+                                      engine.chats[engine.currentChat]?["pinned"] = !(engine.chats[engine.currentChat]?["pinned"]??false);
+                                    });
+                                    engine.saveChats();
+                                  },
+                                  value: engine.chats[engine.currentChat]?["pinned"]??false
+                              ),
+                              if (engine.context.isNotEmpty) CardContents.longTap(
+                                  title: engine.dict.value("clear_context"),
+                                  subtitle: engine.dict.value("context_desc").replaceAll("%c", engine.chats[engine.currentChat]?["tokens"]??"0"),
+                                  action: () {
+                                    Fluttertoast.showToast(
+                                        msg: engine.dict.value("long_tap_clear"),
+                                        toastLength: Toast.LENGTH_SHORT,
+                                        fontSize: 16.0
+                                    );
+                                  },
+                                  longAction: (){
+                                    engine.clearContext();
+                                    Fluttertoast.showToast(
+                                        msg: engine.dict.value("long_tap_cleared"),
+                                        toastLength: Toast.LENGTH_SHORT,
+                                        fontSize: 16.0
+                                    );
+                                    Navigator.pop(context);
+                                  }
+                              )
                             ]),
                             Category.settings(
                                 title: engine.dict.value("settings_ai"),
                                 context: context
                             ),
                             cards.cardGroup([
+                              CardContents.tap(
+                                  title: engine.dict.value("chat_prompt"),
+                                  subtitle: engine.promptData.getPromptName(engine.chats[engine.currentChat]?["promptId"] ?? engine.config.defaultPromptId),
+                                  action: () {
+                                    showDialog(
+                                        context: context,
+                                        builder: (BuildContext dialogContext) => AlertDialog(
+                                            title: Text(engine.dict.value("select_prompt")),
+                                            content: Container(
+                                                constraints: BoxConstraints(maxHeight: 300),
+                                                child: SingleChildScrollView(
+                                                    child: cards.cardGroup([
+                                                      ...engine.promptData.defaultPrompts.keys.map((key) {
+                                                        return CardContents.halfTap(
+                                                            title: engine.promptData.defaultPrompts[key]["name"] ?? "Default",
+                                                            subtitle: "System",
+                                                            action: () {
+                                                              setState(() {
+                                                                engine.chats[engine.currentChat]!["promptId"] = key;
+                                                              });
+                                                              engine.saveChats();
+                                                              Navigator.pop(dialogContext);
+                                                            }
+                                                        );
+                                                      }).toList().cast<Widget>(),
+                                                      ...engine.promptData.userPrompts.keys.map((key) {
+                                                        return CardContents.halfTap(
+                                                            title: engine.promptData.userPrompts[key]["name"] ?? "Custom",
+                                                            subtitle: "User",
+                                                            action: () {
+                                                              setState(() {
+                                                                engine.chats[engine.currentChat]!["promptId"] = key;
+                                                              });
+                                                              engine.saveChats();
+                                                              Navigator.pop(dialogContext);
+                                                            }
+                                                        );
+                                                      }).toList().cast<Widget>(),
+                                                    ])
+                                                )
+                                            )
+                                        )
+                                    );
+                                  }
+                              ),
                               CardContents.addretract(
                                   title: engine.dict.value("temperature"),
                                   subtitle: (engine.chats[engine.currentChat]?["chatTemperature"] ?? engine.temperature).toStringAsFixed(1),
@@ -251,100 +331,6 @@ class ChatSettingsPageState extends State<ChatSettingsPage> {
                                   },
                                   value: engine.chats[engine.currentChat]?["shareLocale"] ?? engine.shareLocale
                               ),
-                            ]),
-                            Category.settings(
-                                title: engine.dict.value("chat_prompt"),
-                                context: context
-                            ),
-                            cards.cardGroup([
-                              CardContents.tap(
-                                title: engine.dict.value("chat_prompt"),
-                                subtitle: engine.promptData.getPromptName(engine.chats[engine.currentChat]?["promptId"] ?? engine.config.defaultPromptId),
-                                action: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (BuildContext dialogContext) => AlertDialog(
-                                      title: Text(engine.dict.value("select_prompt")),
-                                      content: Container(
-                                        constraints: BoxConstraints(maxHeight: 300),
-                                        child: SingleChildScrollView(
-                                          child: cards.cardGroup([
-                                            ...engine.promptData.defaultPrompts.keys.map((key) {
-                                              return CardContents.halfTap(
-                                                title: engine.promptData.defaultPrompts[key]["name"] ?? "Default",
-                                                subtitle: "System",
-                                                action: () {
-                                                  setState(() {
-                                                    engine.chats[engine.currentChat]!["promptId"] = key;
-                                                  });
-                                                  engine.saveChats();
-                                                  Navigator.pop(dialogContext);
-                                                }
-                                              );
-                                            }).toList().cast<Widget>(),
-                                            ...engine.promptData.userPrompts.keys.map((key) {
-                                              return CardContents.halfTap(
-                                                title: engine.promptData.userPrompts[key]["name"] ?? "Custom",
-                                                subtitle: "User",
-                                                action: () {
-                                                  setState(() {
-                                                    engine.chats[engine.currentChat]!["promptId"] = key;
-                                                  });
-                                                  engine.saveChats();
-                                                  Navigator.pop(dialogContext);
-                                                }
-                                              );
-                                            }).toList().cast<Widget>(),
-                                          ])
-                                        )
-                                      )
-                                    )
-                                  );
-                                }
-                              )
-                            ]),
-                            if (engine.currentChat != "0") Category.settings(
-                                title: engine.dict.value("chat_settings_other"),
-                                context: context
-                            ),
-                            if (engine.currentChat != "0") cards.cardGroup([
-                              CardContents.turn(
-                                  title: engine.dict.value("pin_chat"),
-                                  subtitle: engine.dict.value("pin_chat_desc"),
-                                  action: (){
-                                    setState(() {
-                                      engine.chats[engine.currentChat]?["pinned"] = !(engine.chats[engine.currentChat]?["pinned"]??false);
-                                    });
-                                    engine.saveChats();
-                                  },
-                                  switcher: (value){
-                                    setState(() {
-                                      engine.chats[engine.currentChat]?["pinned"] = !(engine.chats[engine.currentChat]?["pinned"]??false);
-                                    });
-                                    engine.saveChats();
-                                  },
-                                  value: engine.chats[engine.currentChat]?["pinned"]??false
-                              ),
-                              if(engine.context.isNotEmpty)CardContents.longTap(
-                                  title: engine.dict.value("clear_context"),
-                                  subtitle: engine.dict.value("context_desc").replaceAll("%c", engine.chats[engine.currentChat]?["tokens"]??"0"),
-                                  action: () {
-                                    Fluttertoast.showToast(
-                                        msg: engine.dict.value("long_tap_clear"),
-                                        toastLength: Toast.LENGTH_SHORT,
-                                        fontSize: 16.0
-                                    );
-                                  },
-                                  longAction: (){
-                                    engine.clearContext();
-                                    Fluttertoast.showToast(
-                                        msg: engine.dict.value("long_tap_cleared"),
-                                        toastLength: Toast.LENGTH_SHORT,
-                                        fontSize: 16.0
-                                    );
-                                    Navigator.pop(context);
-                                  }
-                              )
                             ]),
                             text.info(
                                 title: engine.dict.value("chat_settings_desc"),

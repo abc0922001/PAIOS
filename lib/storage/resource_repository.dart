@@ -6,10 +6,11 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 class ResourceRepository {
   final VoidCallback notifyEngine;
+  final Future<void> Function(String, String, String)? logEvent;
 
   List<Map<String, dynamic>> resources = [];
 
-  ResourceRepository({required this.notifyEngine});
+  ResourceRepository({required this.notifyEngine, this.logEvent});
 
   Future<void> initFromHive(String url) async {
     final box = Hive.box('paios_storage');
@@ -33,17 +34,21 @@ class ResourceRepository {
     // Step 3: Network refresh and cache update
     if (!kDebugMode) {
       try {
+        if (logEvent != null) await logEvent!("resource_repo", "info", "Fetching resources from $url/assets/additional_resources.json");
         final response = await http.get(Uri.parse("$url/assets/additional_resources.json"));
         if (response.statusCode == 200) {
+          if (logEvent != null) await logEvent!("resource_repo", "info", "Resources fetched successfully");
           final fetched = List<Map<String, dynamic>>.from(
             (jsonDecode(response.body) as List).map((e) => Map<String, dynamic>.from(e)),
           );
           resources = fetched;
           box.put("cached_resources_json", response.body);
           notifyEngine();
+        } else {
+          if (logEvent != null) await logEvent!("resource_repo", "error", "Failed to fetch resources: ${response.statusCode}");
         }
-      } catch (_) {
-        // Silent fallback — already loaded from cache or bundle
+      } catch (e) {
+        if (logEvent != null) await logEvent!("resource_repo", "error", "Network error while fetching resources: $e");
       }
     }
   }

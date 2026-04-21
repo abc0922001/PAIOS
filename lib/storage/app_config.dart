@@ -13,7 +13,7 @@ class AppConfig {
   bool ignoreInstructions = false;
   bool firstLaunch = true;
   String instructionsText = "";
-  String repo = "Puzzak/PAIOS";
+  String repo = "Puzzaks/PAIOS";
   String defaultPromptId = "system_default";
   
   // Future remote config overrides could go here
@@ -59,7 +59,7 @@ class AppConfig {
       "errorRetry": true,
       "ignoreInstructions": false,
       "instructionsText": "",
-      "repo": "Puzzak/PAIOS",
+      "repo": "Puzzaks/PAIOS",
       "defaultPromptId": "system_default",
     });
     

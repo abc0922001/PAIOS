@@ -9,7 +9,7 @@ import 'package:geminilocal/pages/support/elements.dart';
 import 'package:geminilocal/parts/prompt.dart';
 import 'package:geminilocal/parts/translator.dart';
 import 'parts/gemini.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:geminilocal/storage/analytics_service.dart';
 import 'package:geminilocal/storage/app_config.dart';
 import 'package:geminilocal/storage/chat_repository.dart';
@@ -73,8 +73,8 @@ class AIEngine with md.ChangeNotifier {
   AIEngine() {
     config = AppConfig(notifyEngine: genericRefresh);
     logger = AnalyticsService(notifyEngine: genericRefresh);
-    promptData = PromptRepository(notifyEngine: genericRefresh);
-    resourceData = ResourceRepository(notifyEngine: genericRefresh);
+    promptData = PromptRepository(notifyEngine: genericRefresh, logEvent: logger.log);
+    resourceData = ResourceRepository(notifyEngine: genericRefresh, logEvent: logger.log);
     chatData = ChatRepository(
       notifyEngine: genericRefresh,
       requestTitle: generateChatTitle,
@@ -150,7 +150,7 @@ class AIEngine with md.ChangeNotifier {
     await log("init", "info", "Starting the app engine");
     await log("init", "info", "Starting the translations engine");
     dict = Dictionary(path: "assets/translations", url: "https://raw.githubusercontent.com/${config.repo}/main");
-    await dict.setup();
+    await dict.setup(log: logger.log);
     await log("init", "info", "Checking Gemini Nano status");
     await checkEngine();
     await log("init", "info", "Initializing the Prompt engine");
@@ -370,40 +370,19 @@ class AIEngine with md.ChangeNotifier {
     );
   }
 
-  addToContext() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    contextSize =
-        contextSize +
-        responseText.split(' ').length +
-        lastPrompt.split(' ').length;
-    context.add({
-      "user": "User",
-      "time": DateTime.now().millisecondsSinceEpoch.toString(),
-      "message": lastPrompt,
-    });
-    context.add({
-      "user": "Gemini",
-      "time": DateTime.now().millisecondsSinceEpoch.toString(),
-      "message": responseText,
-    });
-    await prefs.setString("context", jsonEncode(context));
-    await prefs.setInt("contextSize", contextSize);
-    if (currentChat == "0") {
-      currentChat = DateTime.now().millisecondsSinceEpoch.toString();
-    }
-    await saveChat(context, chatID: currentChat);
-    lastPrompt = "";
+  /// Saves the last exchange (user prompt + AI response) to Hive via ChatRepository.
+  /// The response text lives on the engine; the repository handles everything else.
+  Future<void> addToContext() async {
+    await chatData.addToContext(responseText);
     responseText = "";
-    notifyListeners();
   }
 
-  deleteChat(String chatID) async {
-    if (chats.containsKey(chatID) && !(chatID == "0")) {
-      chats.remove(chatID);
-      notifyListeners();
-      await log("application", "info", "Deleting chat");
-    }
-  }
+  /// Persists the current in-memory chats map to Hive via ChatRepository.
+  Future<void> saveChats() => chatData.saveChats();
+
+  /// Removes a chat from Hive (no-op for sentinel IDs "0" / "testing").
+  Future<void> deleteChat(String chatID) => chatData.deleteChat(chatID);
+
 
   Future<String> generateChatTitle(String input) async {
     ignoreContext = true;
@@ -503,65 +482,6 @@ class AIEngine with md.ChangeNotifier {
     return newTitle.trim().replaceAll(".", "");
   }
 
-  saveChats() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString("chats", jsonEncode(chats));
-    genericRefresh();
-  }
-
-  saveChat(List conversation, {String chatID = "0"}) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    if (chatID == "0") {
-      chatID = DateTime.now().millisecondsSinceEpoch.toString();
-    }
-    if (conversation.isNotEmpty) {
-      if (chats.containsKey(chatID)) {
-        if (!chats[chatID]!.containsKey("name")) {
-          await Future.delayed(Duration(milliseconds: 500));
-
-          /// We have to wait some time because summarizing immediately will always result in overflowing the quota for some reason
-          await generateChatTitle(conversation[0]["message"]).then((newTitle) {
-            chats[chatID]!["name"] = newTitle;
-          });
-        }
-        chats[chatID]!["history"] = jsonEncode(conversation).toString();
-        chats[chatID]!["updated"] = DateTime.now().millisecondsSinceEpoch
-            .toString();
-        chats[chatID]!["tokens"] = contextSize.toString();
-        await log(
-          "application",
-          "info",
-          "Saving chat. Length: ${contextSize.toString()}",
-        );
-      } else {
-        isLoading = true;
-        await Future.delayed(Duration(milliseconds: 500));
-
-        /// We have to wait some time because summarizing immediately will always result in overflowing the quota for some reason
-        String newTitle = "Still loading";
-        String composeConversation = "";
-        for (var line in conversation) {
-          composeConversation = "$composeConversation\n - ${line["message"]}";
-        }
-        await generateChatTitle(composeConversation).then((result) {
-          newTitle = result;
-        });
-
-        isLoading = false;
-        chats[chatID] = {
-          "name": newTitle,
-          "tokens": contextSize.toString(),
-          "pinned": false,
-          "history": jsonEncode(conversation).toString(),
-          "created": DateTime.now().millisecondsSinceEpoch.toString(),
-          "updated": DateTime.now().millisecondsSinceEpoch.toString(),
-        };
-        await log("application", "info", "Saving new chat");
-      }
-    }
-    await prefs.setString("chats", jsonEncode(chats));
-    genericRefresh();
-  }
 
   Future<void> clearContext() async {
     await chatData.clearContext();
@@ -861,7 +781,7 @@ class AIEngine with md.ChangeNotifier {
                 isContinuing = false;
                 isLoading = false;
                 status = "Done";
-                addToContext();
+                await addToContext();
                 prompt.clear();
                 await log(
                   "model",
@@ -1051,7 +971,7 @@ class AIEngine with md.ChangeNotifier {
               isContinuing = false;
               isLoading = false;
               status = "Done";
-              addToContext();
+              await addToContext();
               prompt.clear();
             }
             break;
@@ -1064,7 +984,7 @@ class AIEngine with md.ChangeNotifier {
             // Save whatever we accumulated so user doesn't lose it
             if (_combinedResponse.isNotEmpty) {
               responseText = _combinedResponse;
-              addToContext();
+              await addToContext();
               prompt.clear();
             } else {
               responseText = event.error ?? "Continuation failed";
@@ -1080,7 +1000,7 @@ class AIEngine with md.ChangeNotifier {
         await log("model", "error", "Continuation stream error: $e");
         if (_combinedResponse.isNotEmpty) {
           responseText = _combinedResponse;
-          addToContext();
+          await addToContext();
           prompt.clear();
         } else {
           analyzeError("Continuation", e);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../engine.dart';
@@ -43,32 +44,47 @@ class SettingsResourcesState extends State<SettingsResources> {
                       ),
                       SliverToBoxAdapter(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: engine.resourceData.grouped.keys.toList().map((collection) {
-                            return Column(
+                          children: [
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Category.settings(
-                                    title: collection,
-                                    context: context
-                                ),
-                                cards.cardGroup(
-                                    engine.resourceData.grouped[collection]!.map((resource) {
-                                  return CardContents.tap(
-                                      title: resource["name"] ?? "",
-                                      subtitle: (resource["value"] ?? "").toString().replaceFirst(RegExp(r'^https?://'), '').split('/')[0],
-                                      action: () async {
-                                        await launchUrl(
-                                          Uri.parse(resource["value"] ?? ""),
-                                          mode: LaunchMode.externalApplication
-                                        );
-                                      }
-                                  );
-                                }).toList().cast<Widget>()
-                                ),
-                              ],
-                            );
-                          }).toList(),
+                              children: engine.resourceData.grouped.keys.toList().map((collection) {
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Category.settings(
+                                        title: engine.dict.value(collection),
+                                        context: context
+                                    ),
+                                    cards.cardGroup(
+                                        engine.resourceData.grouped[collection]!.map((resource) {
+                                          return CardContents.tap(
+                                              title: resource["name"] ?? "",
+                                              subtitle: (resource["value"] ?? "").toString().replaceFirst(RegExp(r'^https?://'), '').split('/')[0],
+                                              action: () async {
+                                                await launchUrl(
+                                                    Uri.parse(resource["value"] ?? ""),
+                                                    mode: LaunchMode.externalApplication
+                                                );
+                                              }
+                                          );
+                                        }).toList().cast<Widget>()
+                                    ),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
+                            text.info(
+                              title: engine.dict.value("settings_info").replaceAll("%year%", DateFormat('yyyy').format(DateTime.now())),
+                              context: context,
+                              subtitle: engine.dict.value("gh_repo"),
+                              action: () async {
+                                await launchUrl(
+                                    Uri.parse('https://github.com/Puzzaks/geminilocal'),
+                                    mode: LaunchMode.externalApplication
+                                );
+                              }
+                            )
+                          ],
                         ),
                       ),
                     ],

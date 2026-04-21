@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geminilocal/pages/settings/logs.dart';
 import 'package:geminilocal/pages/settings/prompts.dart';
 import 'package:geminilocal/pages/settings/resources.dart';
+import 'package:geminilocal/storage/file_access_service.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../engine.dart';
@@ -17,9 +18,17 @@ class SettingsPage extends StatefulWidget {
 }
 
 class SettingsPageState extends State<SettingsPage> {
+  String? _promptDirPath;
+
   @override
   void initState() {
     super.initState();
+    _loadPromptDirPath();
+  }
+
+  Future<void> _loadPromptDirPath() async {
+    final path = await FileAccessService.getDirectoryDisplayPath();
+    if (mounted) setState(() => _promptDirPath = path);
   }
   @override
   Widget build(BuildContext context) {
@@ -115,13 +124,46 @@ class SettingsPageState extends State<SettingsPage> {
                                   },
                                   value: engine.errorRetry
                               ),
-                              CardContents.tap(
+                              CardContents.tapIcon(
                                   title: engine.dict.value("open_aicore_settings"),
                                   subtitle: engine.dict.value("in_play_store"),
+                                  icon: Icons.android_rounded,
+                                  colorBG: Theme.of(context).colorScheme.primaryFixedDim,
+                                  color: Theme.of(context).colorScheme.onPrimaryFixed,
                                   action: () async {
                                     engine.gemini.openAICorePlayStore();
                                   }
                               ),
+                              CardContents.tapIcon(
+                                  title: engine.dict.value(engine.analytics?"logs_with_analytics":"logs_no_analytics"),
+                                  subtitle: "",
+                                  icon: Icons.checklist_rounded,
+                                  colorBG: Theme.of(context).colorScheme.primaryFixedDim,
+                                  color: Theme.of(context).colorScheme.onPrimaryFixed,
+                                  action: (){
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => LogsPage(),
+                                          settings: const RouteSettings(name: 'LogsPage')),
+                                    );
+                                  }
+                              ),
+                              CardContents.tapIcon(
+                                  title: engine.dict.value("settings_resources"),
+                                  subtitle: engine.dict.value("settings_resources_desc"),
+                                  icon: Icons.dataset_linked_rounded,
+                                  colorBG: Theme.of(context).colorScheme.primaryFixedDim,
+                                  color: Theme.of(context).colorScheme.onPrimaryFixed,
+                                  action: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => SettingsResources(),
+                                        settings: const RouteSettings(name: 'SettingsResources'),
+                                      ),
+                                    );
+                                  }
+                              )
                             ]),
                             Category.settings(
                                 title: engine.dict.value("settings_ai"),
@@ -156,59 +198,25 @@ class SettingsPageState extends State<SettingsPage> {
                                     );
                                   }
                               ),
-                            ]),
-                            Category.settings(
-                                title: engine.dict.value("settings_resources"),
-                                context: context
-                            ),
-                            cards.cardGroup([
                               CardContents.tapIcon(
-                                  title: engine.dict.value("settings_resources"),
-                                  subtitle: engine.dict.value("settings_resources_desc"),
-                                  icon: Icons.dataset_linked_rounded,
+                                  title: engine.dict.value("prompt_dir_title"),
+                                  subtitle: _promptDirPath ?? engine.dict.value("prompt_dir_none"),
+                                  icon: Icons.folder_open_rounded,
                                   colorBG: Theme.of(context).colorScheme.primaryFixedDim,
                                   color: Theme.of(context).colorScheme.onPrimaryFixed,
-                                  action: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => SettingsResources(),
-                                        settings: const RouteSettings(name: 'SettingsResources'),
-                                      ),
-                                    );
+                                  action: () async {
+                                    final picked = await FileAccessService.pickDirectory();
+                                    if (picked != null) {
+                                      setState(() => _promptDirPath = picked);
+                                    }
                                   }
-                              )
-                            ]),
-                            Category.settings(
-                                title: engine.dict.value(engine.analytics?"logs_with_analytics":"logs_no_analytics"),
-                                context: context
-                            ),
-                            cards.cardGroup([
-                              CardContents.tapIcon(
-                                  title: engine.dict.value(engine.analytics?"logs_with_analytics":"logs_no_analytics"),
-                                  subtitle: "",
-                                  icon: Icons.checklist_rounded,
-                                  colorBG: Theme.of(context).colorScheme.primaryFixedDim,
-                                  color: Theme.of(context).colorScheme.onPrimaryFixed,
-                                  action: (){
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => LogsPage(),
-                                          settings: const RouteSettings(name: 'LogsPage')),
-                                    );
-                                  }
-                              )
+                              ),
                             ]),
                             text.info(
-                              title: engine.dict.value("settings_info").replaceAll("%year%", DateFormat('yyyy').format(DateTime.now())),
-                              context: context,
-                              subtitle: engine.dict.value("gh_repo"),
-                              action: () async {
-                                await launchUrl(
-                                Uri.parse('https://github.com/Puzzaks/geminilocal'),
-                                mode: LaunchMode.externalApplication
-                                );
-                              }
+                                title: engine.dict.value("prompt_dir_desc"),
+                                context: context,
+                                subtitle: "",
+                                action: () {}
                             )
                           ],
                         ),

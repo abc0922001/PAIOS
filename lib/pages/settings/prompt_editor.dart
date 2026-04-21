@@ -69,14 +69,34 @@ class PromptEditorPageState extends State<PromptEditorPage> {
                         tooltip: engine.dict.value("delete"),
                       ),
                       IconButton(
-                        onPressed: () {
-                           engine.promptData.addUserPrompt(
-                             widget.promptId, 
-                             engine.promptData.getPromptName(widget.promptId), 
-                             contentController.text, 
-                             "User"
+                        onPressed: () async {
+                           final currentName = engine.promptData.getPromptName(widget.promptId);
+                           final defaultName = engine.dict.value("new_prompt_name");
+                           // Always save content immediately so nothing is lost
+                           await engine.promptData.addUserPrompt(
+                             widget.promptId,
+                             currentName,
+                             contentController.text,
+                             "User",
                            );
                            Fluttertoast.showToast(msg: engine.dict.value("saved"));
+                           // If name is still the default sentinel, auto-generate one
+                           if (currentName == defaultName) {
+                             setState(() { engine.isLoading = true; });
+                             final oldName = engine.promptData.getPromptName(widget.promptId);
+                             if (!recentTitles.contains(oldName)) recentTitles.add(oldName);
+                             String newTitle = defaultName;
+                             await engine.generatePromptTitle(contentController.text).then((output) {
+                               if (output.isNotEmpty) newTitle = output.replaceAll('"', '');
+                             });
+                             await engine.promptData.addUserPrompt(
+                               widget.promptId,
+                               newTitle,
+                               contentController.text,
+                               "User",
+                             );
+                             setState(() { engine.isLoading = false; });
+                           }
                         },
                         icon: Icon(Icons.save_rounded),
                         tooltip: engine.dict.value("save"),

@@ -121,7 +121,7 @@
   "logs_info_local": "These are app logs, saved only locally. The local logs are not saved between app restarts and are here to help you understand what is going on in the backend. You can enable analytics if you'd like to help me make the app better.",
   "logs_info_analytics": "These are app logs, shared with the developer. The local logs are not saved between app restarts and are here to help you understand what is going on in the backend. The data is anonymous and is only used to gauge app metrics and crashes to make it better. No chat names, messages or any identifiable information is ever sent to analytics. Thank you for helping make the app better for everyone!",
   "advancedlinks": "For advanced users",
-  "___NEW_IN_1_1_6___": "___",
+  "New for 1.2.0": "Below section contains strings for versions 1.1.5 to 1.2.0",
   "create_prompt_custom": "Create custom",
   "new_prompt_name": "New Prompt",
   "prompt_manager_title": "Prompt Manager",
@@ -156,5 +156,6 @@
   "prompt_empty": "This prompt is empty.",
   "export_prompt": "Export as .md",
   "prompt_dir_title": "Prompt file directory",
-  "prompt_dir_none": "Tap to choose a folder"
+  "prompt_dir_none": "Tap to choose a folder",
+  "prompt_dir_desc": "You can save .md prompts to the selected folder to use in-app or add new prompts there."
 }

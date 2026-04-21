@@ -49,7 +49,7 @@ class Dictionary {
     }
   }
 
-  setup() async {
+  setup({Future<void> Function(String, String, String)? log}) async {
     final box = Hive.box('paios_storage');
     
     // 1. Triple-Tier System Step 1 & 2: Load Cache or Fallback Asset
@@ -81,8 +81,10 @@ class Dictionary {
     // 2. Triple-Tier System Step 3: Network Check & Cache Refresh
     if(!kDebugMode){
       try {
+        if (log != null) await log("dict", "info", "Fetching languages from $url/$path/languages.json");
         final response = await http.get(Uri.parse("$url/$path/languages.json"));
         if(response.statusCode == 200) {
+          if (log != null) await log("dict", "info", "Language list fetched successfully");
           languages = jsonDecode(response.body);
           box.put("cached_languages_json", response.body); // Update persistent cache
           // Only re-decide language if the user has no saved preference.
@@ -93,13 +95,19 @@ class Dictionary {
             String langId = languages[i]["id"];
             final languageGet = await http.get(Uri.parse("$url/$path/$langId.json"));
             if (languageGet.statusCode == 200) {
+              if (log != null) await log("dict", "info", "Downloaded dictionary for $langId");
               dictionary[langId] = jsonDecode(languageGet.body);
               box.put("cached_dict_$langId", languageGet.body); // Update persistent cache
+            } else {
+              if (log != null) await log("dict", "warning", "Failed to download dictionary for $langId: ${languageGet.statusCode}");
             }
           }
+        } else {
+          if (log != null) await log("dict", "error", "Failed to fetch language list: ${response.statusCode}");
         }
       }catch(e){
         if (kDebugMode) print("Falling back to strictly offline Languages! Error: $e");
+        if (log != null) await log("dict", "error", "Network error during dictionary setup: $e");
       }
     }
   }
