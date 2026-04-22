@@ -71,7 +71,7 @@
   "waiting_for_AI": "正在等待模型開始生成。如果您看到此訊息的時間長於預期，這可能表示 ML Kit 發生錯誤，或者您已達到配額限制（在這種情況下只需等待一分鐘然後重試）。",
   "waiting_network": "AI Core 正在等待 WiFi",
   "welcome": "模擬對話。\n請記住 AI 可能會犯錯並忽略您。在設定中查找更多資訊。\n希望您會喜歡這個體驗 - Puzzak :)",
-  "welcome_available": "目前，此模型提供 Alpha 版本，每分鐘有 Token 限制。它可能會發生錯誤或產生意外結果。請在 GitHub 儲存庫上回報您遇到的任何問題，並記住 AI 可能會犯錯。AI 生成的內容不代表應用程式開發者或 Google 的觀點。",
+  "welcome_available": "這些設定為新對話的預設值，您可以針對每個對話分別進行設定。",
   "welcome_download": "模型目前正由 AI Core 下載中，之後您將能夠離線使用它。通常模型大小約為 %size%，但這取決於裝置和模型版本。\nAI Core 將在下載後在背景管理和更新模型。下載需要 WiFi。",
   "welcome_gtfo": "模型正在背景下載。您可以關閉應用程式。\n如果您關閉，將無法顯示精確進度（僅顯示狀態：下載中、錯誤等）。",
   "welcome_unavailable": "很遺憾，您的裝置不支援此模型，或者應用程式無法使用 Google AICore。欲了解更多資訊、疑難排解步驟和回報問題，請造訪 GitHub 儲存庫。\n\n欲了解更多關於模型可用性的資訊，請造訪 MLKit GenAI 說明文件。",
@@ -121,7 +121,7 @@
   "logs_info_local": "這是應用程式日誌，僅保存在本機。本機日誌不會在應用程式重新啟動之間保存，旨在幫助您了解背景發生的情況。如果您想幫助我改進應用程式，可以啟用分析。",
   "logs_info_analytics": "這是應用程式日誌，已與開發者共享。本機日誌不會在應用程式重新啟動之間保存，旨在幫助您了解背景發生的情況。資料是匿名的，僅用於衡量應用程式指標和崩潰情況以改進它。對話名稱、訊息或任何可識別資訊都不會發送到分析系統。感謝您幫助讓應用程式對每個人都更好！",
   "advancedlinks": "進階使用者",
-  "___NEW_IN_1_1_6___": "___",
+  "New for 1.2.0": "Below section contains strings for versions 1.1.5 to 1.2.0",
   "create_prompt_custom": "建立自訂",
   "new_prompt_name": "新提示詞",
   "prompt_manager_title": "提示詞管理員",
@@ -149,5 +149,13 @@
   "model_continuing": "繼續回應…",
   "new_chat_hold": "長按以在開始前進行設定",
   "configure_new_chat": "設定此對話",
-  "temperature_desc": "%value%，預設為 0.7"
+  "temperature_desc": "%value%，預設為 0.7",
+  "prompt_description": "描述",
+  "prompt_author": "作者",
+  "prompt_last_updated": "最後更新",
+  "prompt_empty": "此提示詞為空。",
+  "export_prompt": "匯出為 .md",
+  "prompt_dir_title": "提示詞資料夾",
+  "prompt_dir_none": "點擊以選擇資料夾",
+  "prompt_dir_desc": "您可以將 .md 提示詞儲存至選定的資料夾，以便在應用程式內使用，或在該處新增提示詞。"
 }
